@@ -37,19 +37,54 @@ This layer only makes sense once there's enough real usage to compete over. It's
 ├── README.md              # This file
 ├── PLAN.md                # Technical plan: schema, architecture, roadmap
 ├── docs/                  # Design assets, wireframes, API notes
+├── supabase/
+│   └── migrations/        # SQL schema + RLS policies, applied in order
+├── scripts/
+│   └── seed-off.mjs       # Bootstraps brands/flavors from Open Food Facts
 └── src/                   # React Native (Expo) app source
 ```
 
 ## Quick start (development)
 
+Requires Node 22+, Docker (for the local Supabase stack), and the Expo Go
+app on your phone (or a simulator) to actually see it running.
+
 ```bash
 git clone https://github.com/your-username/energy-atlas.git
 cd energy-atlas
+
+# 1. Start the local backend (Postgres + Auth + API), applies migrations
+#    in supabase/migrations/ automatically.
+npx supabase start
+
+# 2. Point the app at it.
+cd src
+cp .env.example .env
+# fill in EXPO_PUBLIC_SUPABASE_ANON_KEY from `npx supabase status` (run from repo root)
+
+# 3. Install and run.
 npm install
 npx expo start
 ```
 
-Nothing runs against a real Supabase instance yet — see PLAN.md for setup once the schema is applied.
+The catalog will be empty on first run. Seed it from Open Food Facts:
+
+```bash
+# from the repo root
+export SUPABASE_URL=http://127.0.0.1:54321
+export SUPABASE_SERVICE_ROLE_KEY=...   # from `npx supabase status`
+npm install
+npm run seed:off -- --brand-name "Monster Energy" --brand-tag monster-energy
+```
+
+OFF coverage is inconsistent (missing quantities, no imports/limited
+editions), so treat this as a starting point, not a complete catalog.
+
+To reset the local database to match the latest migrations:
+
+```bash
+npx supabase db reset
+```
 
 ## Contributing
 
