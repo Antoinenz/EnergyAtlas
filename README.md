@@ -1,4 +1,4 @@
-# EnergyAtlas (formerly Monstermap)
+# EnergyAtlas
 
 A crowdsourced map and flavor catalog for energy drink collectors and import hunters.
 
