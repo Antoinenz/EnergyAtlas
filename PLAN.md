@@ -1,19 +1,17 @@
-# 📋 EnergyAtlas — Technical Plan & System Architecture
+# EnergyAtlas — Technical Plan
 
-## 1. 🏗️ Tech Stack Overview
+## 1. Tech stack
 
-| Component | Technology / Service | Rationale |
+| Component | Choice | Why |
 |---|---|---|
-| **Mobile Frontend** | React Native + Expo | Cross-platform (iOS/Android) with native map rendering, rapid UI development, and familiar React paradigm. |
-| **Backend & Database** | Supabase (PostgreSQL) | Instant REST & GraphQL APIs, built-in Auth, Row Level Security (RLS), real-time subscriptions, and native PostGIS for geographic queries. |
-| **Maps & Location** | `react-native-maps` / Mapbox GL | High-performance vector rendering, custom drink pin overlays, and smooth cluster rendering for dense store areas. |
-| **Retailer Scrapers** | Parse.bot / Node.js Microservices | Extracting live stock & pricing from major supermarket web APIs without relying on brittle DOM scrapers. |
-| **Image Hosting** | Supabase Storage | Storing user photo verification uploads, custom app assets, and high-res can artwork. |
-| **Global Product Data** | Open Food Facts API | Jumpstart initial catalog barcode lookups and nutrition metadata. |
+| Mobile frontend | React Native + Expo | Cross-platform, native map support, fast iteration. |
+| Backend & database | Supabase (Postgres) | Auth, RLS, realtime, and PostGIS for geo queries out of the box. |
+| Maps | `react-native-maps` (Mapbox GL if clustering/styling needs outgrow it) | Start with the simpler option; don't reach for Mapbox until pin density actually requires it. |
+| Image hosting | Supabase Storage | Photo verification uploads, can artwork. |
+| Initial product data | Open Food Facts API | Seed the catalog by barcode instead of entering everything by hand. |
+| Retailer scrapers | Not in v1 | See §3.2 below — this is a later experiment, not a foundation. |
 
----
-
-## 🗄️ 2. Database Schema Design (Supabase / Postgres)
+## 2. Database schema (Supabase / Postgres)
 
 ### 2.1 `brands`
 ```sql
@@ -25,7 +23,7 @@ CREATE TABLE brands (
 );
 ```
 
-### 2.2 `flavors` (Product Catalog)
+### 2.2 `flavors` (product catalog)
 ```sql
 CREATE TYPE availability_type AS ENUM ('standard', 'import', 'hard_to_find', 'discontinued');
 
@@ -35,7 +33,7 @@ CREATE TABLE flavors (
     name TEXT NOT NULL,
     line_name TEXT, -- e.g. "Ultra", "Juice", "Rehab", "Pure Zero"
     description TEXT,
-    rarity_tier TEXT DEFAULT 'common', -- e.g. "common", "uncommon", "rare", "grail"
+    rarity_tier TEXT DEFAULT 'common', -- "common" | "uncommon" | "rare" | "grail"
     default_availability availability_type DEFAULT 'standard',
     caffeine_mg INT,
     volume_ml INT,
@@ -45,7 +43,7 @@ CREATE TABLE flavors (
 );
 ```
 
-### 2.3 `stores` (Locations)
+### 2.3 `stores` (locations)
 ```sql
 CREATE TYPE store_type AS ENUM ('supermarket', 'dairy_convenience', 'gas_station', 'specialty_import');
 
@@ -63,7 +61,7 @@ CREATE TABLE stores (
 );
 ```
 
-### 2.4 `stock_reports` (Crowdsourced & Scraped Availability)
+### 2.4 `stock_reports` (crowdsourced availability)
 ```sql
 CREATE TABLE stock_reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -80,7 +78,7 @@ CREATE TABLE stock_reports (
 );
 ```
 
-### 2.5 `user_profiles` & Gamification
+### 2.5 `user_profiles` and community tables (later phase)
 ```sql
 CREATE TABLE user_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -117,29 +115,31 @@ CREATE TABLE user_badges (
 );
 ```
 
----
+`reviews` (ratings/notes) is useful from day one and cheap to build — keep it early. `badges`/`user_badges`/XP are the part to actually defer; they only matter once there's a userbase to compete within.
 
-## 🗺️ 3. Key Architectural Features
+## 3. Architectural notes
 
-### 3.1 Freshness & Verification Algorithm
-* Stock reports feature a **decay metric**. 
-* After 14 days without user re-verification (`last_verified_at`), stock state converts to `Unverified`.
-* After 30 days without verification, stock state drops from map rendering unless confirmed by another spotter.
-* Users tapping *"Confirm Stock Still Here"* increment `verified_count` and refresh `last_verified_at`, earning +10 XP.
+### 3.1 Freshness/verification
+- A stock report with no re-verification for 14 days flips to `unverified`.
+- After 30 days unverified, it drops off the map unless someone confirms it's still there.
+- Tapping "still here" bumps `verified_count` and resets `last_verified_at`.
 
-### 3.2 Automated Supermarket Integration
-1. **Parse.bot Integration Pipeline:** Microservice runs scheduled cron jobs targeting major supermarket internal APIs.
-2. **Upsert Logic:** Matching barcode / SKU data against existing `stores` and `flavors`. Automatically sets `is_automated_source = TRUE`.
+This only works if there's enough report volume that decay doesn't just mean "the map is always empty." Worth watching once real data exists — the 14/30-day windows are a starting guess, not a tested number.
 
----
+### 3.2 Retailer scrapers — deferred, not foundational
+Pulling live stock/pricing from supermarket chains sounds like the highest-leverage feature (instant map density with no user effort), which is exactly why it's tempting to build first. Don't. Concretely:
+- Major retailers generally don't publish public stock/price APIs; anything reachable is an internal API not meant for third-party use, which is a ToS risk and a maintenance burden (it will change or block you without notice).
+- It replaces exactly the crowdsourcing behavior the app depends on for the community/gamification layer to mean anything later. If the map is fully scraper-fed, there's no reason for a user to ever submit a report.
+- Treat this as a phase-4-or-later experiment on a single retailer, evaluated for legal/ToS risk before writing a scraper, not a launch feature.
 
-## 🎯 4. Development Roadmap & Milestones
+### 3.3 Cold start
+The map is the headline feature and it's worthless with zero data. Before any of the map/scraper work, decide who enters the first ~100 store/stock records and in what city. Realistic options: seed it yourself in your own city, or recruit a handful of people from an existing energy-drink collecting community (Reddit/Facebook groups already exist for this) to seed before public launch. This should be a launch task, not an afterthought.
 
-* **Phase 1: Core Catalog & Auth**
-  * Supabase setup, Auth screens, Flavor catalog feed, Search & Filter by brand/line.
-* **Phase 2: Interactive Map & Stock Logging**
-  * Mapbox / `react-native-maps` integration, GPS pin creation, adding store locations and logging stock + price.
-* **Phase 3: Gamification & Reviews**
-  * Profile pages, review/comment threads, XP calculation, Badge triggers (e.g. "First Spotter").
-* **Phase 4: Scrapers & Price Comparison**
-  * Parse.bot setup for local supermarket inventory, price comparison view across stores.
+## 4. Roadmap
+
+- **Phase 0: Seed data plan.** Decide the launch city/region, seed ~50-100 stores manually, pull an initial flavor set from Open Food Facts + manual entry for anything missing. No app code depends on this, but nothing else matters without it.
+- **Phase 1: Catalog & auth.** Supabase setup, auth screens, flavor catalog browse/search/filter by brand & line.
+- **Phase 2: Map & stock logging.** `react-native-maps` integration, store pins (manual add), log stock + price + photo, freshness decay.
+- **Phase 3: Reviews & ratings.** Per-flavor rating/notes, personal "tried" list. (Cheap, ship alongside phase 1 or 2 if time allows.)
+- **Phase 4: Community layer.** Profiles, badges, XP, leaderboards, comment threads — once there's a real userbase generating reports to compete over.
+- **Phase 5 (experimental, not committed): retailer scraper.** One retailer, evaluated for ToS/legal risk first, treated as an addition to crowdsourced data rather than a replacement for it.
