@@ -5,7 +5,9 @@
   "description": "Repo-root tooling (seed scripts, etc). The app itself lives in src/.",
   "scripts": {
     "seed:off": "node scripts/seed-off.mjs",
-    "sync:parsebot": "node scripts/sync-parsebot.mjs"
+    "sync:parsebot": "node scripts/sync-parsebot.mjs",
+    "enrich:off": "node scripts/enrich-off.mjs",
+    "test:match": "node scripts/test-match.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8"

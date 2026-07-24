@@ -25,8 +25,16 @@ import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "can-images";
 const SOURCE = "parsebot_monster";
+// No category param => the scraper returns every drink across all categories.
 const DEFAULT_SCRAPER_URL =
-  "https://api.parse.bot/scraper/26ea289b-92e5-458c-8f1d-16a061bd4d27/list_drinks?category=monster-energy";
+  "https://api.parse.bot/scraper/26ea289b-92e5-458c-8f1d-16a061bd4d27/list_drinks";
+
+// The scraper's category is Monster's product line; map it to our line_name.
+const LINE_BY_CATEGORY = {
+  "monster-energy": "Original",
+  "monster-ultra": "Ultra",
+  "juice-monster": "Juice",
+};
 
 function requireEnv(name) {
   const v = process.env[name];
@@ -131,6 +139,7 @@ async function main() {
       source: SOURCE,
       source_slug: drink.slug,
       name: drink.name,
+      line_name: LINE_BY_CATEGORY[drink.category] ?? null,
       description: drink.description ?? null,
       flavor_profile: drink.flavor_profile ?? null,
       caffeine_mg: parseIntUnit(drink.caffeine),
