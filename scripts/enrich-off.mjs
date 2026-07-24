@@ -17,7 +17,10 @@ import { bestMatch } from "./lib/match.mjs";
 
 const APPLY = process.argv.includes("--apply");
 const SOURCE = "parsebot_monster";
-const THRESHOLD = 0.4;
+// Overridable: --threshold=0.65. Default errs toward recall for the dry run;
+// bump it when applying so only high-confidence matches write.
+const thresholdArg = process.argv.find((a) => a.startsWith("--threshold="));
+const THRESHOLD = thresholdArg ? Number(thresholdArg.split("=")[1]) : 0.4;
 
 function requireEnv(name) {
   const v = process.env[name];
@@ -61,8 +64,12 @@ async function fetchOff() {
   const url =
     "https://world.openfoodfacts.org/api/v2/search?brands_tags=monster-energy" +
     "&page_size=200&fields=code,product_name,quantity,nutriments";
+  // OFF throttles generic/bot User-Agents on the search endpoint; a descriptive
+  // UA with a contact address is their documented requirement and gets through.
   const res = await fetch(url, {
-    headers: { "User-Agent": "EnergyAtlas-Enrich/0.1 (dev tool)" },
+    headers: {
+      "User-Agent": "EnergyAtlas/0.1 (https://github.com/Antoinenz/EnergyAtlas; antoinenzrossi@gmail.com)",
+    },
   });
   if (!res.ok) throw new Error(`OFF request failed: ${res.status} ${res.statusText}`);
   const data = await res.json();
