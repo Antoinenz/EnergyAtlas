@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AuthProvider } from "./lib/auth";
 import CatalogScreen from "./screens/CatalogScreen";
 import FlavorDetailScreen from "./screens/FlavorDetailScreen";
 import MapScreen from "./screens/MapScreen";
@@ -28,18 +29,20 @@ function CatalogStackNavigator() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="auto" />
-      <NavigationContainer>
-        <Tab.Navigator screenOptions={{ headerShown: false }}>
-          <Tab.Screen
-            name="Catalog"
-            component={CatalogStackNavigator}
-            options={{ tabBarLabel: "Catalog" }}
-          />
-          <Tab.Screen name="Map" component={MapScreen} />
-          <Tab.Screen name="Profile" component={ProfileScreen} />
-        </Tab.Navigator>
-      </NavigationContainer>
+      <AuthProvider>
+        <StatusBar style="auto" />
+        <NavigationContainer>
+          <Tab.Navigator screenOptions={{ headerShown: false }}>
+            <Tab.Screen
+              name="Catalog"
+              component={CatalogStackNavigator}
+              options={{ tabBarLabel: "Catalog" }}
+            />
+            <Tab.Screen name="Map" component={MapScreen} />
+            <Tab.Screen name="Profile" component={ProfileScreen} />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
