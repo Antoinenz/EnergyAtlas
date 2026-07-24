@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -113,8 +114,15 @@ export default function CatalogScreen({ navigation }: Props) {
               })
             }
           >
+            {item.image_url ? (
+              <Image source={{ uri: item.image_url }} style={styles.thumb} />
+            ) : (
+              <View style={[styles.thumb, styles.thumbPlaceholder]} />
+            )}
             <View style={styles.rowMain}>
-              <Text style={styles.flavorName}>{item.name}</Text>
+              <Text style={styles.flavorName} numberOfLines={1}>
+                {item.name}
+              </Text>
               <Text style={styles.flavorMeta}>
                 {item.brands?.name ?? "Unknown brand"}
                 {item.line_name ? ` · ${item.line_name}` : ""}
@@ -159,6 +167,8 @@ const styles = StyleSheet.create({
     borderBottomColor: "#ddd",
   },
   rowPressed: { opacity: 0.5 },
+  thumb: { width: 44, height: 56, marginRight: 12, resizeMode: "contain" },
+  thumbPlaceholder: { backgroundColor: "#f2f2f2", borderRadius: 6 },
   rowMain: { flex: 1 },
   flavorName: { fontSize: 16, fontWeight: "500" },
   flavorMeta: { fontSize: 13, color: "#666", marginTop: 2 },

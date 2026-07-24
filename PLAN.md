@@ -9,7 +9,8 @@
 | Maps | `react-native-maps` (Mapbox GL if clustering/styling needs outgrow it) | Start with the simpler option; don't reach for Mapbox until pin density actually requires it. |
 | Image hosting | Supabase Storage | Photo verification uploads, can artwork. |
 | Initial product data | Open Food Facts API | Seed the catalog by barcode instead of entering everything by hand. |
-| Retailer scrapers | Not in v1 | See §3.2 below — this is a later experiment, not a foundation. |
+| Brand catalog scrape | Parse.bot (Monster site) | Daily job pulls Monster's own catalog + high-res transparent can art into our DB/Storage. Catalog enrichment only — see §3.2. |
+| Retailer stock scrapers | Not in v1 | See §3.2 — scraping supermarket stock/pricing is the risky idea, still deferred. |
 
 ## 2. Database schema (Supabase / Postgres)
 
@@ -126,11 +127,15 @@ CREATE TABLE user_badges (
 
 This only works if there's enough report volume that decay doesn't just mean "the map is always empty." Worth watching once real data exists — the 14/30-day windows are a starting guess, not a tested number.
 
-### 3.2 Retailer scrapers — deferred, not foundational
-Pulling live stock/pricing from supermarket chains sounds like the highest-leverage feature (instant map density with no user effort), which is exactly why it's tempting to build first. Don't. Concretely:
-- Major retailers generally don't publish public stock/price APIs; anything reachable is an internal API not meant for third-party use, which is a ToS risk and a maintenance burden (it will change or block you without notice).
-- It replaces exactly the crowdsourcing behavior the app depends on for the community/gamification layer to mean anything later. If the map is fully scraper-fed, there's no reason for a user to ever submit a report.
-- Treat this as a phase-4-or-later experiment on a single retailer, evaluated for legal/ToS risk before writing a scraper, not a launch feature.
+### 3.2 Scraping — catalog yes, retailer stock no
+Two very different uses get lumped under "scraping"; they carry very different risk.
+
+**Catalog enrichment (in use).** A daily Parse.bot job (`scripts/sync-parsebot.mjs`, cron at 04:00) pulls Monster's own published catalog — names, descriptions, caffeine/volume, and high-res transparent can art — and stores all of it in our own DB + Storage bucket. The app never calls Parse.bot; it only reads what the job wrote. This is low-risk (a brand's public product listing), idempotent (upsert on `source_slug`), and degrades fine if the source is down (we keep the last copy). It doesn't cover every flavor — imports/limited editions aren't on the Monster site — so it supplements manual/OFF entry, it doesn't replace it.
+
+**Retailer stock/pricing (still deferred).** Pulling live stock/pricing from supermarket chains sounds like the highest-leverage feature (instant map density, no user effort), which is exactly why it's tempting to build first. Don't:
+- Major retailers don't publish public stock/price APIs; anything reachable is an internal API not meant for third-party use — a ToS risk and a maintenance burden (it changes or blocks you without notice).
+- It replaces the exact crowdsourcing behavior the app depends on. If the map is fully scraper-fed, there's no reason for a user to ever submit a report, and the community layer has nothing to stand on.
+- Phase-5 experiment on a single retailer, evaluated for legal/ToS risk first — not a launch feature.
 
 ### 3.3 Cold start
 The map is the headline feature and it's worthless with zero data. Before any of the map/scraper work, decide who enters the first ~100 store/stock records and in what city. Realistic options: seed it yourself in your own city, or recruit a handful of people from an existing energy-drink collecting community (Reddit/Facebook groups already exist for this) to seed before public launch. This should be a launch task, not an afterthought.
